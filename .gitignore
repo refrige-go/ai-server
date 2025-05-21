@@ -1,0 +1,29 @@
+# Python 관련 파일
+*.pyc
+*.pyo
+__pycache__/
+
+# 가상환경
+venv/
+env/
+
+# IDE 설정 파일들
+.vscode/
+.idea/
+
+# .env 파일
+.env
+
+# 로그 파일들
+*.log
+
+# 파이썬 테스트 커버리지
+.coverage
+*.coveragerc
+
+# 빌드 아티팩트
+build/
+dist/
+
+# 패키지 관리 관련 파일
+*.egg-info/
