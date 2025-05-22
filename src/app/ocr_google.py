@@ -52,6 +52,7 @@ def filter_kor_eng_num(items):
         filtered.append(item)
     return filtered   
 
+
 def is_product_name(line):
     if re.fullmatch(r"\d{10,13}", line.replace(" ", "")):
         return False
@@ -87,6 +88,7 @@ def detect_text(image_path):
         print(texts[0].description)
         # 줄 단위로 분리
         lines = texts[0].description.split('\n')
+
         # 1차: 품목만 추출
         product_names = [line for line in lines if is_product_name(line)]
         # 2차: 정제
@@ -116,6 +118,14 @@ def detect_text(image_path):
         except requests.exceptions.RequestException as e:
             print(f"백엔드 API 호출 실패: {e}")
             return []
+
+        # 품목만 추출
+        product_names = [line for line in lines if is_product_name(line)]
+        # 품목명 정제
+        cleaned_products = [clean_product_name(name) for name in product_names if clean_product_name(name)]
+        print("최종 품목명:", cleaned_products)
+        return cleaned_products
+
     else:
         print('텍스트가 감지되지 않았습니다.')
         return []
