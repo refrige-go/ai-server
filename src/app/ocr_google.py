@@ -9,13 +9,13 @@ def is_valid_product_name(name):
     # 1. 숫자만 있는 경우 제외
     if re.fullmatch(r'\d+', name):
         return False
-    # 2. 날짜/시간 패턴 제외 (예: 20210117, 15:57 등)
-    if re.search(r'\d{4}[-]?\d{2}[-]?\d{2}', name):  # 20210117, 2021-01-17 등
-        return False
-    if re.search(r'\d{1,2}:\d{2}', name):  # 15:57 등
-        return False
+    # # 2. 날짜/시간 패턴 제외 (예: 20210117, 15:57 등)
+    # if re.search(r'\d{4}[-]?\d{2}[-]?\d{2}', name):  # 20210117, 2021-01-17 등
+    #     return False
+    # if re.search(r'\d{1,2}:\d{2}', name):  # 15:57 등
+    #     return False
     # 3. POS, 총 품목, 합계, 금액 등 키워드 포함 제외
-    exclude_keywords = ['POS', '총 품목', '합계', '금액', '수량', '구매', '상품명','단가']
+    exclude_keywords = ['POS', '총 품목', '합계', '금액', '수량', '구매', '상품명','단가','전화']
     for keyword in exclude_keywords:
         if keyword.replace(" ", "") in name.replace(" ", ""):
             return False
@@ -89,6 +89,17 @@ def detect_text(image_path):
         # 줄 단위로 분리
         lines = texts[0].description.split('\n')
 
+        # === 날짜만 정규표현식으로 추출 ===
+        purchase_date = None
+        for line in lines:
+            # yyyy-mm-dd 또는 yyyy-mm-dd hh:mm:ss 형식 추출
+            match = re.search(r'\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?', line)
+            if match:
+                purchase_date = match.group()
+                break
+        print("구매일자:", purchase_date)
+        # =======================================
+
         # 1차: 품목만 추출
         product_names = [line for line in lines if is_product_name(line)]
         # 2차: 정제
@@ -101,7 +112,8 @@ def detect_text(image_path):
         json_data = {
             "rawText": texts[0].description,
             "extractedProducts": filtered_products,
-            "totalProducts": len(filtered_products)
+            "totalProducts": len(filtered_products),
+            "purchaseDate": "2018-04-25 10:12:12" #구매날짜 추가
         }
 
         # 백엔드 API 호출
@@ -114,10 +126,14 @@ def detect_text(image_path):
             api_response.raise_for_status()  # HTTP 에러 체크
             matched_products = api_response.json()
             print("매칭된 상품:", matched_products)
-            return matched_products
+            # return matched_products, purchase_date -----------------1
+            return {
+                "ingredients": matched_products,  # 또는 filtered_products
+                "purchaseDate": purchase_date
+            }
         except requests.exceptions.RequestException as e:
             print(f"백엔드 API 호출 실패: {e}")
-            return []
+            return [], purchase_date
 
         # 품목만 추출
         product_names = [line for line in lines if is_product_name(line)]
@@ -125,6 +141,7 @@ def detect_text(image_path):
         cleaned_products = [clean_product_name(name) for name in product_names if clean_product_name(name)]
         print("최종 품목명:", cleaned_products)
         return cleaned_products
+        
 
     else:
         print('텍스트가 감지되지 않았습니다.')
@@ -137,5 +154,5 @@ def detect_text(image_path):
                 response.error.message))
 
 if __name__ == '__main__':
-    image_path = 'goodbill.jpg'  # 실제 이미지 파일 경로
+    image_path = 'fruitbill.jpg'  # 실제 이미지 파일 경로 -> ocr-google.py를 실행시킬 때 인식하는 사진
     detect_text(image_path)
