@@ -23,15 +23,21 @@ def ocr():
 
                 print("result:", result)
                 ingredients = []
-                for product in result:
-                    ingredients.append({
-                        'name': product.get('matchedName', product.get('originalName', product)) if isinstance(product, dict) else product,
-                        'confidence': 80,
-                        'text': product.get('originalName', product) if isinstance(product, dict) else product,
-                        'category': product.get('mainCategory', '미분류') if isinstance(product, dict) else '미분류'
-                    })
-                #return jsonify({'ingredients': ingredients})
-                # 구매일자도 같이 내려줌
+                for product in ingredients_raw:
+                    if isinstance(product, dict):
+                        ingredients.append({
+                            'name': product.get('matchedName', product.get('originalName', product.get('name', ''))),
+                            'confidence': product.get('confidence', 80),
+                            'text': product.get('originalName', product.get('name', '')),
+                            'category': product.get('mainCategory', '미분류')
+                        })
+                    else:
+                        ingredients.append({
+                            'name': product,
+                            'confidence': 80,
+                            'text': product,
+                            'category': '미분류'
+                        })
                 return jsonify({'ingredients': ingredients, 'purchaseDate': purchase_date})
 
         # JSON으로 파일명 받는 경우도 처리
@@ -41,16 +47,26 @@ def ocr():
             base_dir = os.path.dirname(os.path.abspath(__file__))
             file_path = os.path.join(base_dir, filename)
             if filename and os.path.exists(file_path):
-                #result = detect_text(file_path)
-                result, purchase_date = detect_text(file_path)
+                result = detect_text(file_path)
+                ingredients_raw = result.get('ingredients', [])
+                purchase_date = result.get('purchaseDate')
+
                 ingredients = []
-                for product in result:
-                    ingredients.append({
-                        'name': product.get('matchedName', product.get('originalName', product)) if isinstance(product, dict) else product,
-                        'confidence': 80,
-                        'text': product.get('originalName', product) if isinstance(product, dict) else product,
-                        'category': product.get('mainCategory', '미분류') if isinstance(product, dict) else '미분류'
-                    })
+                for product in ingredients_raw:
+                    if isinstance(product, dict):
+                        ingredients.append({
+                            'name': product.get('matchedName', product.get('originalName', product.get('name', ''))),
+                            'confidence': product.get('confidence', 80),
+                            'text': product.get('originalName', product.get('name', '')),
+                            'category': product.get('mainCategory', '미분류')
+                        })
+                    else:
+                        ingredients.append({
+                            'name': product,
+                            'confidence': 80,
+                            'text': product,
+                            'category': '미분류'
+                        })
                 return jsonify({'ingredients': ingredients, 'purchaseDate': purchase_date})
             else:
                 return jsonify({'error': 'File not found'}), 404
