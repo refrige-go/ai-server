@@ -248,7 +248,7 @@ cd backend
 - `app/services/ocr_service.py`: OCR 처리 서비스
 - `app/utils/image_processor.py`: 이미지 전처리 유틸리티
 
-### 유진 (나머지 전체 담당)
+### 유진 (나머지 담당)
 - `app/main.py`: 메인 애플리케이션
 - `app/api/search.py`: 시맨틱 검색 API
 - `app/api/recommendation.py`: 일반 추천 API
