@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import ocr, recommendation, external
+from app.api import ocr, recommendation, external, search
 
 app = FastAPI(
     title="AI Recipe Server",
@@ -20,8 +20,13 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(ocr.router, prefix="/api/v1/ocr", tags=["OCR"])
 app.include_router(recommendation.router, prefix="/api/v1/recipes", tags=["Recommendation"])
+app.include_router(search.router, prefix="/api/v1", tags=["Search"])
 app.include_router(external.router, prefix="/api/v1/external", tags=["External"])
 
 @app.get("/")
 async def root():
-    return {"message": "AI Recipe Server is running"} 
+    return {"message": "AI Recipe Server is running"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
