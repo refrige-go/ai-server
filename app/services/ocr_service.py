@@ -21,7 +21,7 @@ from app.models.schemas import OCRResponse, RecognizedIngredient
 from app.clients.google_vision_client import GoogleVisionClient
 from app.utils.image_preprocessor import preprocess_image
 from app.utils.text_processor import clean_text
-from app.services.matching_service import match_ingredient
+from app.services.enhanced_search_service import EnhancedSearchService
 import time
 
 async def analyze_receipt_image(image: UploadFile) -> OCRResponse:

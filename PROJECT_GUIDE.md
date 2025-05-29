@@ -105,7 +105,7 @@ python scripts/test_search.py
 ### 5.1 AI 서버 실행
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8012
 ```
 
 ### 5.2 백엔드 서버 실행
