@@ -8,18 +8,5 @@ TODO: 계절별 식재료 정보를 가져오는 API 클라이언트
 
 참고: 현재는 구현되지 않은 상태이며, 추후 계절별 식재료 API가 준비되면 구현 예정입니다.
 """ 
-<<<<<<< HEAD
-
-# app/clients/seasonal_api_client.py
-
-class SeasonalAPIClient:
-    def __init__(self):
-        pass
-
-    def get_seasonal_ingredients(self, *args, **kwargs):
-        # TODO: 실제 구현
-        return []
-=======
 class SeasonalAPIClient:
     ...
->>>>>>> dev

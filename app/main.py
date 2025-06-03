@@ -1,70 +1,131 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-<<<<<<< HEAD
-# from app.api import ocr, recommendation, external
-from app.api import ocr  # OCR만 import
+from app.api import recommendation, search, integration
+# OCR과 외부 API는 선택적 기능으로 필요시 활성화
+# from app.api import ocr, external
+from app.config.settings import get_settings
+from app.clients.opensearch_client import opensearch_client
 import logging
-import sys # 로깅할 때 추가 
-from dotenv import load_dotenv
 
-load_dotenv()
-
-# 로깅 설정 수정
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('app.log', encoding='utf-8')  # UTF-8 인코딩 지정
-    ]
-)
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# app = FastAPI(
-#     title="AI Recipe Server",
-#     description="레시피 AI 서버 - OCR, 추천, 날씨 기반 추천 기능 제공",
-#     version="1.0.0"
-# )
-
-app = FastAPI()
-=======
-from app.api import ocr, recommendation, external, search
+# 설정 로드
+settings = get_settings()
 
 app = FastAPI(
-    title="AI Recipe Server",
-    description="레시피 AI 서버 - OCR, 추천, 날씨 기반 추천 기능 제공",
-    version="1.0.0"
+    title="Refrige-Go AI Server",
+    description="식재료 기반 레시피 추천 AI 서버 (recipe-ai-project OpenSearch 연동)",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
->>>>>>> dev
 
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 실제 운영 환경에서는 특정 도메인만 허용하도록 수정
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 라우터 등록
-app.include_router(ocr.router, prefix="/api/v1/ocr", tags=["OCR"])
-<<<<<<< HEAD
-# app.include_router(recommendation.router, prefix="/api/v1/recipes", tags=["Recommendation"])
-# app.include_router(external.router, prefix="/api/v1/external", tags=["External"])
+# 라우터 등록 (핵심 기능만)
+app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
+app.include_router(recommendation.router, prefix="/api/recommend", tags=["Recommendation"])
+app.include_router(search.router, prefix="/api/search", tags=["Search"])
 
 @app.get("/")
 async def root():
-    return {"message": "AI Recipe Server is running"} 
-=======
-app.include_router(recommendation.router, prefix="/api/v1/recipes", tags=["Recommendation"])
-app.include_router(search.router, prefix="/api/v1", tags=["Search"])
-app.include_router(external.router, prefix="/api/v1/external", tags=["External"])
-
-@app.get("/")
-async def root():
-    return {"message": "AI Recipe Server is running"}
+    """루트 엔드포인트"""
+    return {
+        "message": "Refrige-Go AI Server",
+        "version": "1.0.0",
+        "description": "식재료 기반 레시피 추천 AI 서버",
+        "environment": settings.environment,
+        "docs": "/docs",
+        "health": "/health"
+    }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
->>>>>>> dev
+    """헬스체크 엔드포인트"""
+    try:
+        # OpenSearch 연결 테스트
+        opensearch_status = await opensearch_client.test_connection()
+        
+        # 인덱스 통계 가져오기
+        stats = await opensearch_client.get_stats()
+        
+        return {
+            "status": "healthy" if opensearch_status else "unhealthy",
+            "version": "1.0.0",
+            "environment": settings.environment,
+            "opensearch": {
+                "connected": opensearch_status,
+                "host": settings.opensearch_host,
+                "port": settings.opensearch_port,
+                "recipes_count": stats.get("recipes_count", 0),
+                "ingredients_count": stats.get("ingredients_count", 0)
+            },
+            "features": {
+                "vector_search": opensearch_status,
+                "text_search": opensearch_status,
+                "recipe_recommendation": opensearch_status,
+                "ingredient_matching": bool(settings.openai_api_key)
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=503, detail={
+            "status": "unhealthy",
+            "error": str(e),
+            "suggestion": "recipe-ai-project OpenSearch가 실행 중인지 확인해주세요"
+        })
+
+@app.on_event("startup")
+async def startup_event():
+    """서버 시작 시 실행"""
+    logger.info("🚀 Refrige-Go AI Server 시작")
+    logger.info(f"환경: {settings.environment}")
+    logger.info(f"OpenSearch: {settings.opensearch_host}:{settings.opensearch_port}")
+    
+    # OpenSearch 연결 테스트
+    try:
+        connection_ok = await opensearch_client.test_connection()
+        if connection_ok:
+            logger.info("✅ OpenSearch 연결 성공")
+            
+            # 통계 정보 로깅
+            stats = await opensearch_client.get_stats()
+            logger.info(f"📊 레시피: {stats.get('recipes_count', 0)}개")
+            logger.info(f"📊 재료: {stats.get('ingredients_count', 0)}개")
+        else:
+            logger.warning("⚠️ OpenSearch 연결 실패")
+            logger.warning("recipe-ai-project OpenSearch 실행 필요")
+            
+    except Exception as e:
+        logger.error(f"❌ 시작 중 오류: {str(e)}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """서버 종료 시 실행"""
+    logger.info("🛑 AI Server 종료")
+    
+    try:
+        opensearch_client.close()
+        logger.info("✅ OpenSearch 연결 종료")
+    except Exception as e:
+        logger.error(f"⚠️ 종료 중 오류: {str(e)}")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.debug,
+        log_level=settings.log_level.lower()
+    )
