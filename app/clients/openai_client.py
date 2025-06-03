@@ -10,13 +10,30 @@ from app.config.settings import get_settings
 from typing import List
 import logging
 import asyncio
+import httpx
 
 logger = logging.getLogger(__name__)
 
 class OpenAIClient:
     def __init__(self):
         self.settings = get_settings()
-        self.client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+        
+        # httpx 클라이언트 호환성을 위한 설정
+        try:
+            # 최신 방식으로 초기화 시도
+            self.client = AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                timeout=30.0
+            )
+        except TypeError:
+            # 구버전 호환성을 위한 대안
+            import httpx
+            http_client = httpx.AsyncClient(timeout=30.0)
+            self.client = AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                http_client=http_client
+            )
+        
         # 업로드된 임베딩과 동일한 모델 사용
         self.model = "text-embedding-3-small"
         self.max_retries = self.settings.vector_embedding_max_retries
@@ -86,3 +103,6 @@ class OpenAIClient:
         임베딩 API 응답을 파싱합니다.
         """
         return [data.embedding for data in response.data]
+
+# 싱글톤 인스턴스
+openai_client = OpenAIClient()

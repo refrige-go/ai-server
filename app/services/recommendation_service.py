@@ -38,11 +38,38 @@ class RecommendationService:
                 request.ingredients
             )
             
-            # 2. OpenSearch에서 레시피 검색
-            recipes = await self.opensearch_client.search_recipes_by_ingredients(
-                ingredient_embeddings,
-                limit=request.limit
-            )
+            # 임베딩 생성에 실패하면 텍스트 검색으로 대체
+            if not ingredient_embeddings:
+                logger.warning("임베딩 생성 실패, 텍스트 검색으로 대체")
+                # 재료들을 합쳐서 텍스트 검색
+                ingredient_query = " ".join(request.ingredients)
+                recipes = await self.opensearch_client.search_recipes_by_text(
+                    ingredient_query,
+                    limit=request.limit
+                )
+            else:
+                # 2. OpenSearch에서 레시피 검색
+                recipes = await self.opensearch_client.search_recipes_by_ingredients(
+                    ingredient_embeddings,
+                    limit=request.limit
+                )
+            
+            # 디버깅: 첫 번째 레시피 데이터 구조 출력 (더 상세하게)
+            if recipes:
+                logger.info(f"전체 레시피 개수: {len(recipes)}")
+                logger.info(f"첫 번째 레시피 데이터 구조: {list(recipes[0].keys())}")
+                
+                # 레시피 이름 관련 필드들 찾기
+                sample_recipe = recipes[0]
+                name_related_fields = {}
+                for key, value in sample_recipe.items():
+                    if any(keyword in key.lower() for keyword in ['name', 'nm', 'title', 'recipe']):
+                        name_related_fields[key] = value
+                        
+                logger.info(f"이름 관련 필드들: {name_related_fields}")
+                logger.info(f"전체 샘플 데이터: {sample_recipe}")
+            else:
+                logger.warning("검색된 레시피가 없습니다.")
             
             # 3. 점수 계산 및 정렬
             scored_recipes = self._calculate_recipe_scores(
@@ -61,6 +88,8 @@ class RecommendationService:
             
         except Exception as e:
             logger.error(f"Error in get_recommendations: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
     async def _get_ingredient_embeddings(
@@ -74,7 +103,8 @@ class RecommendationService:
             return await self.openai_client.get_embeddings(ingredients)
         except Exception as e:
             logger.error(f"Error in _get_ingredient_embeddings: {str(e)}")
-            raise
+            # 임베딩 생성 실패 시 비어있는 리스트 반환
+            return []
 
     def _calculate_recipe_scores(
         self,
@@ -96,10 +126,43 @@ class RecommendationService:
             # 2. 기본 검색 점수와 재료 매칭 점수 결합
             final_score = (recipe.get("score", 0) * 0.7) + (ingredient_score * 0.3)
             
-            # 3. RecipeScore 객체 생성
+            # 3. 실제 데이터 구조에 맞는 레시피 이름 찾기 (name 필드가 실제 필드명)
+            recipe_name = (
+                recipe.get("name") or             # 실제 데이터에서 사용하는 필드
+                recipe.get("rcp_nm") or 
+                recipe.get("recipe_name") or 
+                recipe.get("title") or
+                recipe.get("RCP_NM") or
+                recipe.get("recipeName") or
+                str(recipe.get("_id", "레시피"))   # 최후의 수단으로 ID 사용
+            )
+            
+            # 4. 실제 데이터 구조에 맞는 레시피 ID 찾기
+            recipe_id = (
+                recipe.get("recipe_id") or       # 실제 데이터에서 사용하는 필드
+                recipe.get("rcp_seq") or 
+                recipe.get("_id") or 
+                ""
+            )
+            
+            # 5. 실제 데이터 구조에 맞는 조리법 찾기
+            cooking_method = (
+                recipe.get("cooking_method") or  # 실제 데이터에서 사용하는 필드
+                recipe.get("rcp_way2") or 
+                ""
+            )
+            
+            # 6. 실제 데이터 구조에 맞는 카테고리 찾기
+            category = (
+                recipe.get("category") or        # 실제 데이터에서 사용하는 필드
+                recipe.get("rcp_category") or 
+                ""
+            )
+            
+            # 7. RecipeScore 객체 생성
             scored_recipe = RecipeScore(
-                rcp_seq=recipe.get("recipe_id", ""),
-                rcp_nm=recipe.get("name", ""),
+                rcp_seq=str(recipe_id),
+                rcp_nm=recipe_name,
                 score=final_score,
                 match_reason=self._generate_match_reason(
                     recipe,
@@ -107,8 +170,8 @@ class RecommendationService:
                     ingredient_score
                 ),
                 ingredients=self._extract_recipe_ingredients(recipe),
-                rcp_way2=recipe.get("cooking_method", ""),
-                rcp_category=recipe.get("category", "")
+                rcp_way2=cooking_method,
+                rcp_category=category
             )
             
             scored_recipes.append(scored_recipe)
@@ -133,7 +196,7 @@ class RecommendationService:
         
         recipe_ingredients = [
             ing.strip().lower() 
-            for ing in recipe_ingredients_text.split(",")
+            for ing in str(recipe_ingredients_text).split(",")
         ]
         requested_lower = [ing.lower() for ing in requested_ingredients]
         
@@ -160,14 +223,19 @@ class RecommendationService:
         """
         매칭 이유를 생성합니다.
         """
-        recipe_name = recipe.get("name", "레시피")
+        recipe_name = (
+            recipe.get("name") or 
+            recipe.get("rcp_nm") or 
+            recipe.get("recipe_name") or 
+            "레시피"
+        )
         
         if ingredient_score > 0.8:
-            return f"{recipe_name}은(는) 요청하신 재료 대부분을 사용합니다"
+            return f"{recipe_name}은(는) 요청하신 재료 대부분을 사용합니다 (매칭도: {ingredient_score:.1%})"
         elif ingredient_score > 0.5:
-            return f"{recipe_name}은(는) 요청하신 재료 일부를 사용합니다"
+            return f"{recipe_name}은(는) 요청하신 재료 일부를 사용합니다 (매칭도: {ingredient_score:.1%})"
         else:
-            return f"{recipe_name}은(는) 유사한 재료를 사용하는 레시피입니다"
+            return f"{recipe_name}은(는) 유사한 재료를 사용하는 레시피입니다 (매칭도: {ingredient_score:.1%})"
 
     def _extract_recipe_ingredients(
         self, 
@@ -180,10 +248,10 @@ class RecommendationService:
         if not ingredients_text:
             return []
         
-        ingredient_names = [name.strip() for name in ingredients_text.split(",")]
+        ingredient_names = [name.strip() for name in str(ingredients_text).split(",")]
         
         ingredients = []
-        for i, name in enumerate(ingredient_names):
+        for i, name in enumerate(ingredient_names[:10]):  # 최대 10개 재료
             if name:
                 ingredients.append(RecipeIngredient(
                     ingredient_id=i + 1,  # 임시 ID

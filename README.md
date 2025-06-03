@@ -1,185 +1,302 @@
-# AI Recipe Recommendation Server
+# 🤖 Refrige-Go AI Server
 
-이 프로젝트는 영수증 OCR과 날씨 기반 레시피 추천을 제공하는 AI 서버입니다.
+식재료 기반 레시피 추천을 위한 AI 서버입니다. OpenSearch와 OpenAI 임베딩을 활용한 시맨틱 검색과 레시피 추천 기능을 제공합니다.
 
-## 시스템 아키텍처
+## 📋 목차
+- [기능 소개](#기능-소개)
+- [시스템 요구사항](#시스템-요구사항)
+- [설치 및 실행](#설치-및-실행)
+- [API 문서](#api-문서)
+- [Java 백엔드 연동](#java-백엔드-연동)
+- [프로젝트 구조](#프로젝트-구조)
+- [개발 가이드](#개발-가이드)
 
-### 전체 시스템 구성
+## 🚀 기능 소개
+
+### 핵심 기능
+- **재료 기반 레시피 추천**: 보유 재료로 만들 수 있는 레시피 추천
+- **시맨틱 검색**: AI 임베딩을 활용한 의미 기반 검색
+- **텍스트 검색**: 키워드 기반 레시피/재료 검색
+- **벡터 검색**: OpenAI 임베딩 기반 유사도 검색
+
+### AI 매칭 시스템
 ```
-[Next.js Frontend] <-> [Java Backend] <-> [AI Server (Python)]
+1. Exact Match (정확 매칭)
+   - 파프리카 = 파프리카
+
+2. Synonym Match (동의어 매칭) 🤖
+   - 파프리카 ↔ 피망
+   - 양배추 ↔ 배추
+
+3. Similar Match (유사 재료) 🤖
+   - 소고기 → 돼지고기 (같은 육류)
+   - 양파 → 대파 (같은 파 계열)
+
+4. Substitute Match (대체 재료) 🤖
+   - 우유 → 두유
+   - 설탕 → 꿀
 ```
 
-### 데이터 흐름
+## 🛠 시스템 요구사항
 
-1. **영수증 OCR 처리**
-   ```
-   Frontend -> Java Backend -> AI Server
-   - Frontend: 영수증 이미지 업로드
-   - Java Backend: POST /api/v1/ocr/process
-   - AI Server: 
-     - 이미지 전처리
-     - Google Vision API로 OCR 처리
-     - 식재료 매칭
-     - 응답: {ingredients: [], confidence: float, processing_time: float}
-   ```
+### 필수 요구사항
+- **Python 3.8+**
+- **Docker & Docker Compose**
+- **OpenSearch** (recipe-ai-project 연동)
+- **OpenAI API Key**
 
-2. **레시피 추천**
-   ```
-   Frontend -> Java Backend -> AI Server
-   - Frontend: 재료 목록 전송
-   - Java Backend: POST /api/v1/recipes/recommend
-   - AI Server:
-     - 재료 임베딩 생성 (OpenAI)
-     - OpenSearch로 레시피 검색
-     - 점수 계산 및 정렬
-     - 응답: {recipes: [], total_matches: int, processing_time: float}
-   ```
+### 선택적 요구사항
+- Google Cloud Vision API (OCR 기능용)
+- Weather API Key (날씨 기반 추천용)
 
-3. **날씨 기반 추천**
-   ```
-   Frontend -> Java Backend -> AI Server
-   - Frontend: 위치 정보 전송
-   - Java Backend: POST /api/v1/recipes/weather-recommend
-   - AI Server:
-     - 날씨 정보 조회
-     - 계절 식재료 조회
-     - 레시피 추천
-     - 응답: {weather: {}, seasonal_ingredients: [], recipes: [], recommendation_reason: str}
-   ```
+## 🚀 설치 및 실행
 
-## API 엔드포인트
-
-### OCR API
-- `POST /ocr/process`: 영수증 이미지 처리
-- Request: `multipart/form-data` (image file)
-- Response: `OCRResponse`
-
-### 추천 API
-- `POST /recommendation`: 재료 기반 레시피 추천
-- Request: `RecommendationRequest`
-- Response: `RecommendationResponse`
-
-### 외부 API
-- `POST /weather/recommend`: 날씨 기반 레시피 추천
-- `GET /weather/{location}`: 날씨 정보 조회
-- `GET /seasonal/{location}`: 계절 식재료 조회
-
-## 로컬 개발 환경 설정
-
-### 1. Python 환경 설정
+### 1. 프로젝트 클론
 ```bash
-# Python 3.9 이상 설치
-# 가상환경 생성 및 활성화
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-.\venv\Scripts\activate   # Windows
+git clone [your-repo-url]
+cd ai-server
+```
 
-# 의존성 설치
+### 2. 가상환경 생성 및 활성화
+```bash
+# Windows
+python -m venv recipe-ai
+recipe-ai\Scripts\activate
+
+# macOS/Linux
+python -m venv recipe-ai
+source recipe-ai/bin/activate
+```
+
+### 3. 의존성 설치
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. 환경 변수 설정
-1. `.env.example` 파일을 `.env`로 복사
+### 4. 환경변수 설정
 ```bash
+# .env.example을 복사하여 .env 파일 생성
 cp .env.example .env
-```
 
-2. `.env` 파일에 필요한 API 키 설정
-```bash
-# OpenSearch
-OPENSEARCH_HOST=your_opensearch_host
-OPENSEARCH_USER=your_username
-OPENSEARCH_PASSWORD=your_password
-
-# OpenAI
+# .env 파일 편집 (필수 설정)
 OPENAI_API_KEY=your_openai_api_key
-
-# Google Cloud Vision
-GOOGLE_CLOUD_CREDENTIALS=path_to_credentials.json
-
-# Weather API
-WEATHER_API_KEY=your_weather_api_key
-
-# Seasonal Ingredients API
-SEASONAL_API_KEY=your_seasonal_api_key
-
-# Server
-HOST=0.0.0.0
-PORT=8000
-DEBUG=True
+OPENSEARCH_HOST=localhost
+OPENSEARCH_PORT=9201
 ```
 
-### 3. Google Cloud Vision 설정
-1. Google Cloud Console에서 프로젝트 생성
-2. Vision API 활성화
-3. 서비스 계정 생성 및 키 다운로드
-4. 다운로드한 키 파일을 프로젝트 루트에 저장
-5. `.env` 파일의 `GOOGLE_CLOUD_CREDENTIALS` 경로 설정
-
-### 4. 서버 실행
+### 5. OpenSearch 실행 (recipe-ai-project)
 ```bash
-# 개발 서버 실행
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# recipe-ai-project 디렉토리에서
+cd ../recipe-ai-project
+docker-compose up -d
 
-# 프로덕션 서버 실행
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+# OpenSearch가 완전히 시작될 때까지 대기 (약 1-2분)
 ```
 
-## 프로젝트 구조
+### 6. AI 서버 실행
+```bash
+# ai-server 디렉토리에서
+uvicorn app.main:app --reload --port 8000
+```
+
+### 7. 서버 확인
+- API 문서: http://localhost:8000/docs
+- 헬스체크: http://localhost:8000/health
+
+## 📖 API 문서
+
+### 주요 엔드포인트
+
+#### 1. 레시피 추천 (권장)
+```http
+POST /api/recommend/by-ingredients
+Content-Type: application/json
+
+{
+  "ingredients": ["양파", "당근", "소고기"],
+  "limit": 10
+}
+```
+
+**응답 예시:**
+```json
+{
+  "recipes": [
+    {
+      "rcp_seq": "1045",
+      "rcp_nm": "차가운 당근 수프",
+      "score": 1.214,
+      "match_reason": "차가운 당근 수프은(는) 요청하신 재료 대부분을 사용합니다 (매칭도: 100.0%)",
+      "rcp_way2": "끓이기",
+      "rcp_category": "양식",
+      "ingredients": [...]
+    }
+  ],
+  "total": 1,
+  "processing_time": 0.95
+}
+```
+
+#### 2. 벡터 기반 추천 (AI 추천)
+```http
+POST /api/integration/recipes/recommend/vector
+Content-Type: application/json
+
+{
+  "ingredients": ["양파", "당근"],
+  "limit": 10
+}
+```
+
+#### 3. 텍스트 검색
+```http
+GET /api/integration/recipes/search/text?q=볶음&limit=10
+GET /api/integration/ingredients/search/text?q=고기&limit=10
+```
+
+#### 4. 헬스체크
+```http
+GET /health
+```
+
+## ☕ Java 백엔드 연동
+
+### RestTemplate 설정 예시
+```java
+@Service
+public class AIServerService {
+    
+    private final RestTemplate restTemplate;
+    private final String AI_SERVER_URL = "http://localhost:8000";
+    
+    @Autowired
+    public AIServerService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+    
+    public RecipeRecommendationResponse getRecommendations(List<String> ingredients) {
+        String url = AI_SERVER_URL + "/api/recommend/by-ingredients";
+        
+        Map<String, Object> request = new HashMap<>();
+        request.put("ingredients", ingredients);
+        request.put("limit", 10);
+        
+        return restTemplate.postForObject(url, request, RecipeRecommendationResponse.class);
+    }
+}
+```
+
+### WebClient 설정 예시 (Spring WebFlux)
+```java
+@Service
+public class AIServerWebClientService {
+    
+    private final WebClient webClient;
+    
+    public AIServerWebClientService() {
+        this.webClient = WebClient.builder()
+            .baseUrl("http://localhost:8000")
+            .build();
+    }
+    
+    public Mono<RecipeRecommendationResponse> getRecommendations(List<String> ingredients) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("ingredients", ingredients);
+        request.put("limit", 10);
+        
+        return webClient.post()
+            .uri("/api/recommend/by-ingredients")
+            .bodyValue(request)
+            .retrieve()
+            .bodyToMono(RecipeRecommendationResponse.class);
+    }
+}
+```
+
+## 📁 프로젝트 구조
+
 ```
 ai-server/
 ├── app/
-│   ├── api/              # API 엔드포인트
-│   ├── services/         # 비즈니스 로직
-│   ├── clients/          # 외부 API 클라이언트
-│   ├── models/           # 데이터 모델
-│   ├── utils/            # 유틸리티 함수
-│   └── config/           # 설정
-├── data/                 # 데이터 파일
-├── tests/                # 테스트 코드
-├── .env                  # 환경 변수
-├── .env.example          # 환경 변수 예시
-├── requirements.txt      # 의존성
-└── README.md            # 문서
+│   ├── api/                    # API 라우터
+│   │   ├── recommendation.py   # 레시피 추천 API
+│   │   ├── search.py          # 검색 API
+│   │   └── integration.py     # 통합 API
+│   ├── clients/               # 외부 서비스 클라이언트
+│   │   ├── opensearch_client.py
+│   │   └── openai_client.py
+│   ├── config/                # 설정
+│   │   └── settings.py
+│   ├── models/                # 데이터 모델
+│   │   └── schemas.py
+│   ├── services/              # 비즈니스 로직
+│   │   └── recommendation_service.py
+│   ├── utils/                 # 유틸리티
+│   └── main.py               # FastAPI 앱 진입점
+├── scripts/                   # 설정 및 유틸 스크립트
+├── docs/                     # 문서
+├── requirements.txt          # Python 의존성
+├── docker-compose.yml        # Docker 설정
+├── Dockerfile               # Docker 이미지 빌드
+├── .env.example            # 환경변수 예시
+└── README.md              # 프로젝트 문서
 ```
 
-## 개발 가이드
+## 🔧 개발 가이드
 
-### 1. 코드 스타일
-- PEP 8 스타일 가이드 준수
-- 타입 힌트 사용
-- 문서화 주석 작성
+### 개발 환경 설정
+1. 코드 변경 시 자동 재시작: `uvicorn app.main:app --reload`
+2. API 문서 확인: http://localhost:8000/docs
+3. 로그 레벨 설정: `.env`에서 `LOG_LEVEL=DEBUG`
 
-### 2. 테스트
+### 테스트 실행
 ```bash
-# 테스트 실행
-pytest
-
-# 커버리지 리포트 생성
-pytest --cov=app tests/
+# 기본 연결 테스트 (개발용 스크립트는 .gitignore에 포함)
+python -c "import requests; print(requests.get('http://localhost:8000/health').json())"
 ```
 
-### 3. 로깅
-- `logging` 모듈 사용
-- 로그 레벨: DEBUG, INFO, WARNING, ERROR, CRITICAL
-- 로그 포맷: 시간, 레벨, 모듈, 메시지
+### 환경변수 설정 가이드
 
-### 4. 에러 처리
-- 커스텀 예외 클래스 사용
-- 적절한 에러 메시지와 상태 코드 반환
-- 로깅 및 모니터링
-
-## 배포
-
-### Docker
+#### 필수 설정
 ```bash
-# 이미지 빌드
-docker build -t ai-recipe-server .
+# OpenAI API (필수)
+OPENAI_API_KEY=sk-proj-...
 
-# 컨테이너 실행
-docker run -p 8000:8000 --env-file .env ai-recipe-server
+# OpenSearch 연결 (필수)
+OPENSEARCH_HOST=localhost
+OPENSEARCH_PORT=9201
 ```
 
-### Kubernetes
-- `k8s/` 디렉토리의 매니페스트 파일 사용
-- 환경 변수는 Kubernetes Secret으로 관리
+#### 선택적 설정
+```bash
+# Google Cloud Vision (OCR 기능용)
+GOOGLE_APPLICATION_CREDENTIALS=path/to/credentials.json
+
+# 날씨 API (날씨 기반 추천용)
+WEATHER_API_KEY=your_weather_api_key
+
+# 서버 설정
+HOST=0.0.0.0
+PORT=8000
+DEBUG=True
+ENVIRONMENT=development
+```
+
+## 🤝 기여 가이드
+
+1. 새로운 기능 개발 시 feature 브랜치 생성
+2. 코드 변경 후 API 문서 업데이트
+3. 테스트 실행 후 Pull Request 생성
+
+## 📞 지원
+
+- API 문서: http://localhost:8000/docs
+- 이슈 리포트: GitHub Issues
+- 개발팀 문의: [팀 연락처]
+
+---
+
+**⚠️ 주의사항**
+- `.env` 파일은 절대 커밋하지 마세요 (민감한 정보 포함)
+- OpenSearch(recipe-ai-project)가 실행 중이어야 AI 서버가 정상 작동합니다
+- OpenAI API Key가 없으면 벡터 검색 기능이 제한됩니다

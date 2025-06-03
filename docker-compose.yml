@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # AI 서버 (FastAPI)
+  ai-server:
+    build: .
+    container_name: recipe-ai-server
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENSEARCH_HOST=host.docker.internal  # recipe-ai-project OpenSearch 연결
+      - OPENSEARCH_PORT=9201
+      - OPENSEARCH_USERNAME=
+      - OPENSEARCH_PASSWORD=
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/certificates/service-account.json
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app
+      - ./certificates:/app/certificates:ro
+    depends_on:
+      - opensearch-check
+    networks:
+      - ai-server-net
+    restart: unless-stopped
+
+  # OpenSearch 연결 확인 서비스 (recipe-ai-project OpenSearch 확인)
+  opensearch-check:
+    image: curlimages/curl:latest
+    container_name: opensearch-check
+    command: >
+      sh -c "
+        echo 'OpenSearch 연결 확인 중...';
+        until curl -f http://host.docker.internal:9200; do
+          echo 'OpenSearch 대기 중... (recipe-ai-project에서 실행되어야 함)';
+          sleep 5;
+        done;
+        echo 'OpenSearch 연결 확인됨!';
+      "
+    networks:
+      - ai-server-net
+
+networks:
+  ai-server-net:
+    external: false
+
+# 참고: 
+# - recipe-ai-project의 OpenSearch를 사용하려면 먼저 recipe-ai-project에서 OpenSearch를 실행하세요
+# - recipe-ai-project 디렉토리에서: docker compose up -d
+# - 그 다음 이 ai-server에서: docker compose up --build
