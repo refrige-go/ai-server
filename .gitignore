@@ -134,9 +134,45 @@ simple_check.py
 *_fixed.py
 *_temp.py
 *_backup.py
-enhanced_search_service_v*.py
 
-# 13. 기타 임시 파일들
+# =================================================================
+# 13. 시맨틱 검색 개발 과정에서 생성된 임시 파일들
+# =================================================================
+
+# 중복된 메인 파일들 (main.py만 유지)
+app/main_fixed.py
+app/main_v3.py
+app/main_final.py
+
+# 중복된 서비스 파일들 (enhanced_search_service_script.py만 유지)
+app/services/enhanced_search_service_script_fixed.py
+app/services/enhanced_search_service_v2.py
+app/services/enhanced_search_service_v3.py
+app/services/enhanced_search_service_simple.py
+app/services/enhanced_search_service_final.py
+
+# 중복된 API 파일들 (search.py만 유지)
+app/api/search_fixed.py
+app/api/search_v3.py
+app/api/search_final.py
+
+# 개발 과정에서 생성된 스코어 계산기들 및 유틸리티들
+app/utils/openai_relevance_scorer.py
+app/utils/openai_relevance_scorer_fixed.py
+app/utils/openai_relevance_scorer_v3.py
+app/utils/openai_relevance_scorer_final.py
+app/utils/smart_score_calculator.py
+app/utils/score_normalizer.py
+app/utils/__init__.py
+
+# 테스트 파일들 (test_api.py, test_connection.py만 유지)
+test_fixed_semantic_search.py
+test_semantic_search_v*.py
+test_openai_*.py
+run_fixed_tests.bat
+setup_project.py
+
+# 14. 기타 임시 파일들
 *.bak
 *.orig
 *.rej
@@ -149,9 +185,10 @@ enhanced_search_service_v*.py
 # 예외: 팀원들과 공유해야 할 파일들
 # =================================================================
 
-# ✅ 핵심 테스트 파일만 포함 (팀원이 꼭 실행해봐야 할 것들)
-!test_connection.py       # 연결 테스트 (만들 예정)
-!test_api.py             # API 테스트 (만들 예정)
+# ✅ 핵심 테스트 파일만 포함
+!test_connection.py
+!test_api.py
+!test_server.py
 
 # ✅ 공식 설정 예시 파일들은 포함
 !.env.example
@@ -169,5 +206,19 @@ enhanced_search_service_v*.py
 !setup.bat
 
 # ✅ 메인 애플리케이션 코드는 모두 포함
-!app/
-!scripts/
+!app/main.py
+!app/config/
+!app/models/
+!app/clients/
+!app/api/search.py
+!app/api/recommendation.py
+!app/api/integration.py
+!app/api/ocr.py
+!app/services/enhanced_search_service_script.py
+!app/services/recommendation_service.py
+!app/services/search_service.py
+!app/services/weather_service.py
+!app/services/ocr_service.py
+!app/utils/synonym_matcher.py
+!app/utils/text_processor.py
+!app/utils/image_preprocessor.py
