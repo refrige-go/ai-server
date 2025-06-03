@@ -19,21 +19,21 @@ class OCRResponse(BaseModel):
 class RecommendationRequest(BaseModel):
     ingredients: List[str]
     limit: int = Field(default=10, ge=1, le=50)
-    user_id: Optional[str]
+    user_id: Optional[str] = None
 
 class RecipeIngredient(BaseModel):
-    ingredient_id: int  # ingredients 테이블의 id와 매핑
+    ingredient_id: int
     name: str
     is_main_ingredient: bool = False
 
 class RecipeScore(BaseModel):
-    rcp_seq: str  # recipes 테이블의 rcp_seq와 매핑
-    rcp_nm: str   # recipes 테이블의 rcp_nm과 매핑
+    rcp_seq: str
+    rcp_nm: str
     score: float
     match_reason: str
     ingredients: List[RecipeIngredient]
-    rcp_way2: str  # recipes 테이블의 rcp_way2와 매핑
-    rcp_category: str  # recipes 테이블의 rcp_category와 매핑
+    rcp_way2: str
+    rcp_category: str
 
 class RecommendationResponse(BaseModel):
     recipes: List[RecipeScore]
@@ -50,15 +50,15 @@ class WeatherData(BaseModel):
     timestamp: datetime
 
 class SeasonalIngredient(BaseModel):
-    ingredient_id: int  # ingredients 테이블의 id와 매핑
+    ingredient_id: int
     name: str
-    category: str  # IngredientCategory enum과 매핑
+    category: str
     season: str
     confidence: float
 
 class WeatherRecommendationRequest(BaseModel):
     location: str
-    user_id: Optional[str]
+    user_id: Optional[str] = None
     limit: int = Field(default=10, ge=1, le=50)
 
 class WeatherRecommendationResponse(BaseModel):
@@ -100,4 +100,8 @@ class SemanticSearchResponse(BaseModel):
     recipes: List[RecipeSearchResult]
     ingredients: List[IngredientSearchResult]
     total_matches: int
-    processing_time: float 
+    processing_time: float
+
+# Forward references 해결
+RecognizedIngredient.model_rebuild()
+OCRResponse.model_rebuild()

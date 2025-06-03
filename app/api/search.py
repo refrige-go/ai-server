@@ -6,7 +6,11 @@ from ..models.schemas import (
     RecipeSearchResult,
     IngredientSearchResult
 )
+<<<<<<< HEAD
 from ..services.search_service import SearchService
+=======
+from app.services.enhanced_search_service import EnhancedSearchService
+>>>>>>> dev
 
 router = APIRouter(prefix="/search", tags=["search"])
 
