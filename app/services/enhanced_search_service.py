@@ -105,15 +105,34 @@ class EnhancedSearchService:
         return results
 
     async def _search_ingredients_by_vector(self, query: str, limit: int) -> List[Dict[str, Any]]:
-        """벡터 기반 재료 검색"""
+        """벡터 기반 재료 검색 - knn 쿼리 사용"""
         try:
+            import numpy as np
+            # OpenAI 임베딩 생성
             query_vector = await self.openai_client.get_embedding(query)
-            results = await self.opensearch_client.vector_search(
+            # 벡터 정규화 (recipe-ai-project와 동일)
+            normalized_vector = np.array(query_vector) / np.linalg.norm(query_vector)
+            
+            # knn 쿼리 사용 (명시적인 _source 설정)
+            search_body = {
+                "size": limit,
+                "query": {
+                    "knn": {
+                        "embedding": {
+                            "vector": list(map(float, normalized_vector)),
+                            "k": min(limit * 2, 50)
+                        }
+                    }
+                },
+                "_source": ["ingredient_id", "name", "category"]  # 명시적으로 필요한 필드만 지정
+            }
+            
+            response = await self.opensearch_client.search(
                 index="ingredients",
-                vector=query_vector,
-                limit=limit
+                body=search_body
             )
-            return results
+            
+            return response["hits"]["hits"]
         except Exception as e:
             print(f"벡터 검색 오류: {e}")
             return []
@@ -148,7 +167,7 @@ class EnhancedSearchService:
         
         # 벡터 결과 추가
         for result in vector_results:
-            source = result["_source"]
+            source = result.get("_source", {})
             name = source.get("name", "")
             key = name.lower()
             
@@ -156,7 +175,7 @@ class EnhancedSearchService:
                 ingredient_id=source.get("ingredient_id", 0),
                 name=name,
                 category=source.get("category", ""),
-                score=result["_score"] * 0.7,  # 벡터 점수 가중치
+                score=result.get("_score", 0) * 0.7,  # 벡터 점수 가중치
                 match_reason="벡터 유사도 검색"
             )
             
@@ -165,7 +184,7 @@ class EnhancedSearchService:
         
         # 텍스트 결과 추가
         for result in text_results:
-            source = result["_source"]
+            source = result.get("_source", {}) if isinstance(result, dict) else result
             name = source.get("name", "")
             key = name.lower()
             
@@ -173,7 +192,7 @@ class EnhancedSearchService:
                 ingredient_id=source.get("ingredient_id", 0),
                 name=name,
                 category=source.get("category", ""),
-                score=result["_score"] * 0.6,  # 텍스트 점수 가중치
+                score=result.get("score", result.get("_score", 0)) * 0.6,  # 텍스트 점수 가중치
                 match_reason="텍스트 매칭"
             )
             
@@ -183,17 +202,39 @@ class EnhancedSearchService:
         return list(combined.values())
 
     async def _search_recipes_hybrid(self, query: str, limit: int) -> List[RecipeSearchResult]:
-        """레시피 하이브리드 검색"""
+        """레시피 하이브리드 검색 - knn 쿼리 사용"""
         # 쿼리에서 재료 추출 및 확장
         expanded_queries = self.synonym_matcher.expand_ingredient_query(query)
         
-        # 벡터 검색
-        query_vector = await self.openai_client.get_embedding(query)
-        vector_results = await self.opensearch_client.vector_search(
-            index="recipes",
-            vector=query_vector,
-            limit=limit
-        )
+        # 벡터 검색 - knn 쿼리 사용
+        try:
+            import numpy as np
+            query_vector = await self.openai_client.get_embedding(query)
+            # 벡터 정규화 (recipe-ai-project와 동일)
+            normalized_vector = np.array(query_vector) / np.linalg.norm(query_vector)
+            
+            # knn 쿼리로 벡터 검색 (명시적인 _source 설정)
+            search_body = {
+                "size": limit,
+                "query": {
+                    "knn": {
+                        "embedding": {
+                            "vector": list(map(float, normalized_vector)),
+                            "k": min(limit * 2, 50)
+                        }
+                    }
+                },
+                "_source": ["recipe_id", "name", "category", "cooking_method", "ingredients"]  # 명시적으로 필요한 필드만 지정
+            }
+            
+            response = await self.opensearch_client.search(
+                index="recipes",
+                body=search_body
+            )
+            vector_results = response["hits"]["hits"]
+        except Exception as e:
+            print(f"레시피 벡터 검색 오류: {e}")
+            vector_results = []
         
         # 확장된 텍스트 검색
         text_results = []
@@ -219,7 +260,7 @@ class EnhancedSearchService:
         
         # 벡터 결과 처리
         for result in vector_results:
-            source = result["_source"]
+            source = result.get("_source", {})
             recipe_id = source.get("recipe_id", "")
             
             if recipe_id and recipe_id not in combined:
@@ -228,18 +269,18 @@ class EnhancedSearchService:
                     rcp_nm=source.get("name", ""),
                     rcp_category=source.get("category", ""),
                     rcp_way2=source.get("cooking_method", ""),
-                    score=result["_score"],
+                    score=result.get("_score", 0),
                     match_reason="벡터 유사도 검색",
                     ingredients=self._extract_recipe_ingredients(source)
                 )
         
         # 텍스트 결과 처리 (점수 부스트)
         for result in text_results:
-            source = result["_source"]
+            source = result.get("_source", {}) if isinstance(result, dict) else result
             recipe_id = source.get("recipe_id", "")
             
             if recipe_id:
-                text_score = result["_score"] * 0.8
+                text_score = result.get("score", result.get("_score", 0)) * 0.8
                 
                 if recipe_id in combined:
                     # 기존 결과와 점수 결합

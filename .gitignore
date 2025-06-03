@@ -1,9 +1,9 @@
-# Environment variables
-.env
-.env.*
-!.env.example
+# =================================================================
+# AI 서버 프로젝트 .gitignore
+# 팀원들과 공유할 필요가 없는 파일들을 제외
+# =================================================================
 
-# Python
+# 1. 파이썬 관련 자동 생성 파일들
 __pycache__/
 *.py[cod]
 *$py.class
@@ -24,52 +24,150 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-node_modules/
+MANIFEST
 
-# Virtual Environment
+# 2. 가상환경 (각자 로컬에서 생성)
 venv/
 env/
 ENV/
+recipe-ai/
 .venv/
-.env/
 
-# IDE
-.idea/
+# 3. 환경변수 파일 (민감한 정보 포함)
+.env
+.env.local
+.env.production
+
+# 4. IDE 및 에디터 설정 파일
 .vscode/
+.idea/
 *.swp
 *.swo
-.DS_Store
+*~
+.sublime-project
+.sublime-workspace
 
-# Logs
+# 5. 로그 및 임시 파일
 *.log
 logs/
-log/
-
-# Local development
-*.db
-*.sqlite3
-*.sqlite
-
-# Google Cloud credentials
-*.json
-!package.json
-!package-lock.json
-
-# Test coverage
-.coverage
-htmlcov/
-.pytest_cache/
-.tox/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# OpenSearch data
-data/embeddings/
-data/recipes/
-data/ingredients/
-
-# Temporary files
 *.tmp
 *.temp
-.cache/
+.DS_Store
+Thumbs.db
+*.pid
+
+# 6. 테스트 및 커버리지 리포트
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# 7. Jupyter Notebook
+.ipynb_checkpoints
+
+# 8. 인증서 및 보안 관련 파일 (민감한 정보)
+certificates/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# 9. 데이터 파일 (용량이 크고 민감한 정보 포함 가능)
+data/
+*.pkl
+*.pickle
+*.csv
+*.json
+!data/.gitkeep  # 디렉토리 구조는 유지
+
+# =================================================================
+# 10. 중복된 문서 파일들 (README.md만 유지)
+# =================================================================
+BACKEND_INTEGRATION_GUIDE.md
+DATA_FLOW_GUIDE.md
+FRONTEND_INTEGRATION_GUIDE.md
+INTEGRATION_GUIDE.md
+PROJECT_GUIDE.md
+PROJECT_STRUCTURE.md
+README_LOCAL_SETUP.md
+SETUP_GUIDE.md
+
+# =================================================================
+# 11. 개발/디버깅용 임시 스크립트들 (팀원들에게 불필요)
+# =================================================================
+debug_*.py
+*_debug.py
+quick_*.py
+simple_*.py
+test_detailed_*.py
+test_integration.py
+test_knn_*.py
+test_vector_*.py
+*_check.py
+direct_*.py
+
+# 특정 개발용 파일들
+debug_opensearch.py
+debug_vector_direct.py
+debug_recipe_fields.py
+direct_opensearch_check.py
+test_detailed_recommendation.py
+test_integration.py
+test_knn_queries.py
+test_vector_search_fixed.py
+vector_search_fix.py
+vector_search_safe.py
+quick_opensearch_check.py
+simple_check.py
+
+# 12. 백업 및 임시 버전 파일들
+*_v2.py
+*_v3.py
+*_safe.py
+*_simple.py
+*_fix.py
+*_fixed.py
+*_temp.py
+*_backup.py
+enhanced_search_service_v*.py
+
+# 13. 기타 임시 파일들
+*.bak
+*.orig
+*.rej
+*~
+.#*
+.*.swp
+.*.swo
+
+# =================================================================
+# 예외: 팀원들과 공유해야 할 파일들
+# =================================================================
+
+# ✅ 핵심 테스트 파일만 포함 (팀원이 꼭 실행해봐야 할 것들)
+!test_connection.py       # 연결 테스트 (만들 예정)
+!test_api.py             # API 테스트 (만들 예정)
+
+# ✅ 공식 설정 예시 파일들은 포함
+!.env.example
+!env.example
+
+# ✅ 메인 문서는 포함 (README.md만)
+!README.md
+
+# ✅ 설정 파일들은 포함
+!docker-compose.yml
+!Dockerfile
+!requirements.txt
+!setup.py
+!setup.sh
+!setup.bat
+
+# ✅ 메인 애플리케이션 코드는 모두 포함
+!app/
+!scripts/
