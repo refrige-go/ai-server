@@ -1,5 +1,5 @@
 """
-점수 정규화 유틸리티
+점수 정규화 유틸리티 - score_normalizer.py 수정 (절대 정규화)
 
 AI 서버에서 생성되는 다양한 점수들을 0-100% 범위로 정규화
 """
@@ -54,24 +54,26 @@ class ScoreNormalizer:
     @staticmethod
     def normalize_scores_in_collection(items: List[Dict[str, Any]], score_key: str = 'score') -> List[Dict[str, Any]]:
         """
-        컬렉션 내 모든 점수를 최대값 기준으로 정규화
+        컬렉션 내 모든 점수를 개별적으로 절대 점수로 정규화 (상대 정규화 아님)
         """
         if not items:
             return items
         
-        # 최대 점수 찾기
-        max_score = max((item.get(score_key, 0) for item in items), default=1.0)
-        
-        if max_score <= 0:
-            max_score = 1.0
-        
-        # 모든 점수를 최대값 기준으로 정규화
+        # 각 점수를 개별적으로 절대 기준으로 정규화
         for item in items:
             original_score = item.get(score_key, 0)
-            normalized_score = (original_score / max_score) * 100.0
+            
+            # 점수 범위에 따라 적절한 정규화 방법 선택
+            if original_score <= 1.0:
+                # 벡터 유사도 점수 (0-1 범위)
+                normalized_score = ScoreNormalizer.normalize_vector_score(original_score)
+            else:
+                # 텍스트 검색 점수 (1-50+ 범위)
+                normalized_score = ScoreNormalizer.normalize_text_score(original_score)
+            
             item[score_key] = round(normalized_score, 2)
         
-        print(f"컬렉션 점수 정규화 완료: {len(items)} 개 항목, 최대 원시 점수: {max_score}")
+        print(f"컬렉션 점수 정규화 완료: {len(items)} 개 항목 (절대 기준)")
         
         return items
     
