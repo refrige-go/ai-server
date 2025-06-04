@@ -1,6 +1,6 @@
 # =================================================================
-# AI 서버 프로젝트 .gitignore
-# 새로 clone 받은 팀원이 오류 없이 실행할 수 있도록 정리
+# Refrige-Go AI Server .gitignore
+# 팀원이 clone 후 오류 없이 실행할 수 있도록 최적화
 # =================================================================
 
 # 1. 파이썬 관련 자동 생성 파일들
@@ -78,43 +78,62 @@ certificates/
 *.pfx
 
 # =================================================================
-# 9. 사용하지 않는 중복 파일들 제거
+# 9. 중복 및 사용하지 않는 파일들 제거
 # =================================================================
 
 # 메인 파일 중복본들 (main.py만 유지)
-app/main_*.py
+app/main_final.py
+app/main_fixed.py
+app/main_v3.py
 
-# API 파일 중복본들 (현재 사용 중인 파일들만 유지)
-app/api/search_*.py
-!app/api/search.py
+# API 파일 중복본들 (핵심 API들만 유지)
+app/api/search_final.py
+app/api/search_fixed.py
+app/api/search_strict.py
+app/api/search_v3.py
 
-# 서비스 파일 중복본들 (script.py만 유지)
-app/services/enhanced_search_service_*.py
-!app/services/enhanced_search_service_script.py
+# 서비스 파일 중복본들 (최종 완성 버전만 유지)
+app/services/enhanced_search_service.py
+app/services/enhanced_search_service_final.py
+app/services/enhanced_search_service_fixed.py
+app/services/enhanced_search_service_simple.py
+app/services/enhanced_search_service_text_only.py
+app/services/enhanced_search_service_v2.py
+app/services/enhanced_search_service_v3.py
+app/services/enhanced_search_service_script.py
+app/services/enhanced_search_service_script_fixed.py
+app/services/openai_semantic_search_service.py
+app/services/smart_hybrid_search_service.py
+app/services/strict_openai_semantic_search_service.py
 
 # 유틸리티 중복본들 (메인 파일만 유지)
-app/utils/openai_relevance_scorer_*.py
-!app/utils/openai_relevance_scorer.py
-
-# 사용하지 않는 유틸리티 파일
+app/utils/korean_typo_corrector.py
+app/utils/openai_relevance_scorer_final.py
+app/utils/openai_relevance_scorer_fixed.py
+app/utils/openai_relevance_scorer_v3.py
 app/utils/smart_score_calculator.py
+app/utils/strict_openai_relevance_verifier.py
+app/utils/strict_threshold_calculator.py
 
-# 테스트 파일들 (핵심 연결 테스트만 유지)
-test_*.py
-!test_connection.py
+# 루트 레벨 테스트 파일들 (scripts/test_connection.py만 유지)
+debug_text_search.py
+smart_ingredient_search_patch.py
+test_api.py
+test_connection.py
+test_detailed_results.py
+test_direct_search.py
+test_final_semantic_search.py
+test_fixed_semantic_search.py
+test_openai_semantic.py
+test_openai_semantic_fixed.py
+test_server.py
+test_service_check.py
 
-# 배치 파일들 (필요시 각자 로컬에서 생성)
-run_*.bat
-setup_project.py
-
-# 문서 파일들 (README.md와 API.md만 유지)
-*.md
-!README.md
-!docs/API.md
-
-# 셋업 스크립트들 (setup.py만 유지)
+# 배치 파일들 및 설정 스크립트들
+run_fixed_tests.bat
 setup.bat
 setup.sh
+setup_project.py
 
 # 기타 임시/백업 파일들
 *.bak

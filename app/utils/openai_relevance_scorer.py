@@ -244,7 +244,7 @@ class OpenAIRelevanceScorer:
 
 # 기존 SmartScoreCalculator를 대체하는 간단한 래퍼
 class AIEnhancedScoreCalculator:
-    def __init__(self, min_score_threshold: float = 60.0):
+    def __init__(self, min_score_threshold: float = 40.0):
         self.ai_scorer = OpenAIRelevanceScorer()
         self.min_score_threshold = min_score_threshold
     
