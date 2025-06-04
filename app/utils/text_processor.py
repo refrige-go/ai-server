@@ -10,20 +10,21 @@ REMOVE_WORDS = [
     '시설', '에서', '하고', '있습니다', '소비자', '분쟁', '해결', '기준', '의거', '교환', '또는', '보상',
     '받으실수', '있습니다', '부정', '불량', '신고', '국번', '없이', '마을', '기업', '업소명', '및', '소재지',
     '농업', '회사', '법인', '사랑', '전북', '정읍시', '칠보면', '촌길', '싸리재', '고객', '센터', '홈페이지',
-    'www.ssarijai.com', '백태', '국산', '폴리에틸렌', '상온'
+    'www.ssarijai.com', '백태', '국산', '폴리에틸렌', '상온',"영수증", "카드", "결제", "편의점", "고객센터", "구매일자", "합계", "매출", "부가세",
+        "금액", "주소", "전화", "환불", "안내", "플랫폼", "대한민국 1등"
 ]
 
 def extract_product_section(full_text: str) -> list:
-    """
-    영수증 전체 텍스트에서 상품명(메뉴) 부분만 추출하는 함수
-    """
     lines = full_text.split('\n')
     products = []
     for line in lines:
         line = line.strip()
         if not line:
             continue
-        # 상품명+수량+금액 패턴 (예: 크라운산도딸기 1 2,500)
+        # 불필요한 단어가 포함된 줄은 제외
+        if any(word in line for word in REMOVE_WORDS):
+            continue
+        # 상품명 후보: 한글/영문 포함된 줄만
         if re.search(r'[가-힣a-zA-Z]', line):
             products.append(line)
     return products
