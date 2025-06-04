@@ -85,6 +85,8 @@ class RecipeSearchResult(BaseModel):
     rcp_nm: str
     rcp_category: str
     rcp_way2: str
+    image: Optional[str] = None          # 메인 이미지 URL
+    thumbnail: Optional[str] = None      # 썸네일 이미지 URL
     score: float
     match_reason: str
     ingredients: List[RecipeIngredient]
