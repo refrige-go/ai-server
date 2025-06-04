@@ -115,6 +115,8 @@ class EnhancedSearchService:
                     'rcp_nm': recipe.rcp_nm,
                     'rcp_category': recipe.rcp_category,
                     'rcp_way2': recipe.rcp_way2,
+                    'image': recipe.image,
+                    'thumbnail': recipe.thumbnail,
                     'score': recipe.score,
                     'match_reason': recipe.match_reason,
                     'ingredients': [{
@@ -144,6 +146,8 @@ class EnhancedSearchService:
                     rcp_nm=recipe_dict['rcp_nm'],
                     rcp_category=recipe_dict['rcp_category'],
                     rcp_way2=recipe_dict['rcp_way2'],
+                    image=recipe_dict.get('image', ''),
+                    thumbnail=recipe_dict.get('thumbnail', ''),
                     score=recipe_dict['score'],
                     match_reason=f"{recipe_dict['match_reason']} + AI 분석",
                     ingredients=ingredients
@@ -211,6 +215,8 @@ class EnhancedSearchService:
                     rcp_nm=source.get("name", ""),
                     rcp_category=source.get("category", ""),
                     rcp_way2=source.get("cooking_method", ""),
+                    image=source.get("image", ""),
+                    thumbnail=source.get("thumbnail", ""),
                     score=ScoreNormalizer.normalize_text_score(original_score),
                     match_reason="텍스트 매칭",
                     ingredients=self._extract_recipe_ingredients_safe(source)
@@ -303,6 +309,8 @@ class EnhancedSearchService:
                     rcp_nm=source.get("name", ""),
                     rcp_category=source.get("category", ""),
                     rcp_way2=source.get("cooking_method", ""),
+                    image=source.get("image", ""),
+                    thumbnail=source.get("thumbnail", ""),
                     score=normalized_score,
                     match_reason="벡터 유사도",
                     ingredients=self._extract_recipe_ingredients_safe(source)
@@ -333,6 +341,8 @@ class EnhancedSearchService:
                         rcp_nm=source.get("name", ""),
                         rcp_category=source.get("category", ""),
                         rcp_way2=source.get("cooking_method", ""),
+                        image=source.get("image", ""),
+                        thumbnail=source.get("thumbnail", ""),
                         score=normalized_text_score,
                         match_reason="텍스트 매칭",
                         ingredients=self._extract_recipe_ingredients_safe(source)

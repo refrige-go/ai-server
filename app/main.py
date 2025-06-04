@@ -1,8 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import recommendation, integration
-# 최종 완전 수정된 search API 사용
-from app.api import search_final as search
+from app.api import recommendation, integration, search, spell_check
 from app.config.settings import get_settings
 from app.clients.opensearch_client import opensearch_client
 import logging
@@ -15,9 +13,9 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 app = FastAPI(
-    title="Refrige-Go AI Server (FINAL - 완전 해결)",
-    description="시맨틱 검색 모든 문제 완전 해결 버전",
-    version="2.0.0",
+    title="Refrige-Go AI Server",
+    description="시맨틱 검색 및 레시피 추천 AI 서버",
+    version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -34,24 +32,25 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
 app.include_router(recommendation.router, prefix="/api/recommend", tags=["Recommendation"])
-app.include_router(search.router, prefix="/api/search", tags=["Search (FINAL - 완전해결)"])
+app.include_router(search.router, prefix="/api/search", tags=["Search"])
+app.include_router(spell_check.router, prefix="/api/spell", tags=["Spell Check"])
 
 @app.get("/")
 async def root():
     """루트 엔드포인트"""
     return {
-        "message": "Refrige-Go AI Server (FINAL - 완전 해결)",
-        "version": "2.0.0",
-        "description": "시맨틱 검색 모든 문제 완전 해결",
+        "message": "Refrige-Go AI Server",
+        "version": "1.0.0",
+        "description": "시맨틱 검색 및 레시피 추천 AI 서버",
         "environment": settings.environment,
         "docs": "/docs",
         "health": "/health",
-        "completely_fixed_issues": [
-            "✅ 텍스트 완전 매칭 절대 우선순위 보장 (니고랭, 김밥 등 모든 레시피)",
-            "✅ 실제 AI 점수 적용으로 100% 점수 문제 완전 해결",
-            "✅ 점수 차등 적용 (100점 → 0-100점 다양한 분포)",
-            "✅ OpenAI API 연동 및 실제 관련성 평가 적용",
-            "✅ 정확한 매칭 우선순위 시스템 (10000점 절대 우선순위)"
+        "features": [
+            "시맨틱 레시피 검색",
+            "벡터 유사도 검색",
+            "AI 기반 레시피 추천",
+            "날씨 기반 추천",
+            "OCR 이미지 인식"
         ]
     }
 
@@ -64,7 +63,7 @@ async def health_check():
         
         return {
             "status": "healthy" if opensearch_status else "unhealthy",
-            "version": "2.0.0",
+            "version": "1.0.0",
             "environment": settings.environment,
             "opensearch": {
                 "connected": opensearch_status,
@@ -74,12 +73,11 @@ async def health_check():
                 "ingredients_count": stats.get("ingredients_count", 0)
             },
             "features": {
-                "final_semantic_search": opensearch_status,
-                "absolute_exact_match_priority": True,
-                "real_ai_scoring": bool(settings.openai_api_key),
-                "diverse_score_distribution": True,
-                "smart_filtering": True,
-                "all_issues_resolved": True
+                "semantic_search": opensearch_status,
+                "vector_search": opensearch_status,
+                "ai_recommendation": bool(settings.openai_api_key),
+                "weather_recommendation": True,
+                "ocr_service": True
             }
         }
         
@@ -94,14 +92,9 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     """서버 시작 시 실행"""
-    logger.info("🚀 Refrige-Go AI Server (FINAL - 완전 해결) 시작")
+    logger.info("🚀 Refrige-Go AI Server 시작")
     logger.info(f"환경: {settings.environment}")
     logger.info(f"OpenSearch: {settings.opensearch_host}:{settings.opensearch_port}")
-    logger.info("🎯 FINAL 버전에서 완전 해결된 모든 문제:")
-    logger.info("  ✅ 텍스트 완전 매칭 절대 우선순위 보장 (니고랭, 김밥 등)")
-    logger.info("  ✅ 실제 AI 점수 적용으로 100% 점수 문제 완전 해결")
-    logger.info("  ✅ 점수 차등 적용 (0-100점 다양한 분포)")
-    logger.info("  ✅ OpenAI API 연동 및 실제 관련성 평가")
     
     # OpenSearch 연결 테스트
     try:
@@ -122,7 +115,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """서버 종료 시 실행"""
-    logger.info("🛑 AI Server FINAL 종료")
+    logger.info("🛑 AI Server 종료")
     
     try:
         opensearch_client.close()
