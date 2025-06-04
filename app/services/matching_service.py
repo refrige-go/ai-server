@@ -1,8 +1,35 @@
-# app/services/matching_service.py
 from app.clients.opensearch_client import opensearch_client
 import logging
+import json
+import os
 
 logger = logging.getLogger(__name__)
+
+SYNONYM_PATH = os.path.join(os.path.dirname(__file__), "../../data/synonym_dictionary.json")
+with open(SYNONYM_PATH, "r", encoding="utf-8") as f:
+    synonym_dict = json.load(f)
+
+# 동의어 사전 역방향 매핑 생성
+synonym_lookup = {}
+for category, items in synonym_dict.items():
+    for standard_name, synonyms in items.items():
+        for synonym in synonyms:
+            synonym_lookup[synonym.replace(" ", "")] = {
+                "standard_name": standard_name,
+                "category": category
+            }
+
+def match_with_synonym_dict(text: str) -> dict:
+    key = text.strip().replace(" ", "")
+    entry = synonym_lookup.get(key)
+    if entry:
+        return {
+            "id": None,  # 필요시 표준명에 id를 추가해서 넣을 수 있음
+            "name": entry["standard_name"],
+            "confidence": 1.0,
+            "alternatives": []  # 필요시 동의어 리스트도 넣을 수 있음
+        }
+    return None
 
 async def search_ingredient_in_opensearch(query: str) -> dict:
     index = "ingredients"  # 실제 인덱스명에 맞게 수정
@@ -25,17 +52,23 @@ async def search_ingredient_in_opensearch(query: str) -> dict:
         }
     return None
 
-def match_ingredient(text: str) -> dict:
+async def match_ingredient(text: str) -> dict:
     logger.debug(f"매칭 시도: {text}")
-    
-    # 1. 오픈서치에서 검색
-    os_result = search_ingredient_in_opensearch(text)
+
+    # 1차: 동의어 사전 매칭
+    synonym_result = match_with_synonym_dict(text)
+    if synonym_result:
+        logger.debug(f"동의어 사전 매칭 성공: {synonym_result}")
+        return synonym_result
+
+    # 2차: 오픈서치 매칭
+    os_result = await search_ingredient_in_opensearch(text)
     if os_result:
         logger.debug(f"오픈서치 매칭 성공: {os_result}")
         return os_result
-    
-    # 2. 유사도 기반 매칭 (필요시 구현)
-    logger.debug(f"오픈서치 매칭 실패, 유사도 매칭 시도: {text}")
+
+    # 3차: fallback
+    logger.debug(f"모든 매칭 실패, 유사도 매칭 시도: {text}")
     return {
         "id": None,
         "name": text,
