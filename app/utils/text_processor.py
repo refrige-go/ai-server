@@ -24,7 +24,7 @@ def extract_product_section(full_text: str) -> list:
         if not line:
             continue
         # 상품명+수량+금액 패턴 (예: 크라운산도딸기 1 2,500)
-        if re.search(r'[가-힣a-zA-Z0-9]+.*\d+[,\.]?\d*$', line):
+        if re.search(r'[가-힣a-zA-Z]', line):
             products.append(line)
     return products
 
