@@ -10,6 +10,7 @@ from ..models.schemas import (
 from app.services.enhanced_search_service_script import EnhancedSearchService
 from app.clients.opensearch_client import opensearch_client
 from app.clients.openai_client import openai_client
+from app.utils.score_normalizer import ScoreNormalizer
 
 router = APIRouter()
 
@@ -122,13 +123,16 @@ async def search_recipes(
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
             
+            # 텍스트 검색 점수 정규화
+            normalized_score = ScoreNormalizer.normalize_text_score(hit["_score"])
+            
             results.append({
                 "rcp_seq": str(source.get("recipe_id", "")),
                 "name": source.get("name", ""),
                 "category": source.get("category", ""),
                 "cooking_method": source.get("cooking_method", ""),
                 "ingredients": str(source.get("ingredients", "")),
-                "score": hit["_score"]
+                "score": normalized_score
             })
         
         return {
@@ -175,11 +179,14 @@ async def search_ingredients(
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
             
+            # 재료 텍스트 검색 점수 정규화
+            normalized_score = ScoreNormalizer.normalize_text_score(hit["_score"])
+            
             results.append({
                 "ingredient_id": source.get("ingredient_id", 0),
                 "name": source.get("name", ""),
                 "category": source.get("category", ""),
-                "score": hit["_score"]
+                "score": normalized_score
             })
         
         return {
@@ -277,13 +284,16 @@ async def vector_search(
                             print(f"재료 파싱 오류: {ingredient_error}")
                             ingredient_dtos = []
                     
+                    # 점수 정규화 적용
+                    normalized_score = ScoreNormalizer.normalize_vector_score(score)
+                    
                     # Java 백엔드 RecipeSearchResultDTO 형식
                     recipe_dto = {
                         "rcp_seq": recipe_id,  # Java에서 기대하는 필드명
                         "rcp_nm": name,  # Java에서 기대하는 필드명
                         "rcp_category": category,  # Java에서 기대하는 필드명
                         "rcp_way2": cooking_method,  # Java에서 기대하는 필드명
-                        "score": score,
+                        "score": normalized_score,
                         "match_reason": "벡터 유사도 검색",  # Java에서 기대하는 필드명
                         "ingredients": ingredient_dtos
                     }
@@ -436,12 +446,15 @@ async def test_java_format():
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
             
+            # Java 테스트를 위한 점수 정규화
+            normalized_score = ScoreNormalizer.normalize_text_score(hit["_score"])
+            
             results.append({
                 "recipe_id": str(source.get("recipe_id", "")),
                 "name": source.get("name", ""),
                 "category": source.get("category", ""),
                 "ingredients": str(source.get("ingredients", "")),  # 반드시 String
-                "score": hit["_score"],
+                "score": normalized_score,
                 "cooking_method": source.get("cooking_method", "")
             })
         
