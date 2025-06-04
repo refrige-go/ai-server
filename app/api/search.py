@@ -267,6 +267,11 @@ async def vector_search(
                     cooking_method = str(result.get("cooking_method", ""))
                     score = float(result.get("score", 0.0))
                     ingredients_text = str(result.get("ingredients", ""))
+                    image = str(result.get("image", ""))
+                    thumbnail = str(result.get("thumbnail", ""))
+                    
+                    # 디버깅: 이미지 필드 확인
+                    print(f"  이미지 데이터: image='{image}', thumbnail='{thumbnail}'")
                     
                     # ingredients를 RecipeIngredientDTO 리스트로 안전하게 변환
                     ingredient_dtos = []
@@ -293,6 +298,8 @@ async def vector_search(
                         "rcp_nm": name,  # Java에서 기대하는 필드명
                         "rcp_category": category,  # Java에서 기대하는 필드명
                         "rcp_way2": cooking_method,  # Java에서 기대하는 필드명
+                        "image": image,  # 메인 이미지 URL
+                        "thumbnail": thumbnail,  # 썸네일 이미지 URL
                         "score": normalized_score,
                         "match_reason": "벡터 유사도 검색",  # Java에서 기대하는 필드명
                         "ingredients": ingredient_dtos
@@ -337,6 +344,47 @@ async def vector_search(
             "searchMethod": "total_error"
         }
         
+@router.get("/search/debug-image-fields")
+async def debug_image_fields():
+    """
+    이미지 필드 디버깅 - 실제 데이터에 이미지 정보가 있는지 확인
+    """
+    try:
+        # 레시피 인덱스에서 샘플 가져오기
+        sample_response = await opensearch_client.search(
+            index="recipes",
+            body={
+                "size": 3,
+                "query": {"match_all": {}},
+                "_source": ["recipe_id", "name", "image", "thumbnail", "category"]
+            }
+        )
+        
+        results = []
+        for hit in sample_response["hits"]["hits"]:
+            source = hit["_source"]
+            results.append({
+                "recipe_id": source.get("recipe_id"),
+                "name": source.get("name"),
+                "image": source.get("image"),
+                "thumbnail": source.get("thumbnail"),
+                "has_image": bool(source.get("image")),
+                "has_thumbnail": bool(source.get("thumbnail"))
+            })
+        
+        return {
+            "status": "success",
+            "sample_count": len(results),
+            "samples": results,
+            "fields_in_index": list(sample_response["hits"]["hits"][0]["_source"].keys()) if results else []
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
 @router.get("/search/debug/{index_name}")
 async def debug_index(index_name: str):
     """
