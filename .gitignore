@@ -103,7 +103,6 @@ app/services/enhanced_search_service_v3.py
 app/services/enhanced_search_service_script.py
 app/services/enhanced_search_service_script_fixed.py
 app/services/openai_semantic_search_service.py
-app/services/smart_hybrid_search_service.py
 app/services/strict_openai_semantic_search_service.py
 
 # 유틸리티 중복본들 (메인 파일만 유지)
