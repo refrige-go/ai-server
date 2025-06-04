@@ -1,7 +1,8 @@
 """
-추천 서비스
+추천 서비스 (수정됨)
 
 업로드된 OpenSearch 데이터를 기반으로 레시피 추천을 제공합니다.
+매칭 이유 생성 로직을 개선하여 정확한 재료 매칭 정보를 제공합니다.
 """
 
 from app.models.schemas import (
@@ -12,7 +13,7 @@ from app.models.schemas import (
 )
 from app.clients.opensearch_client import OpenSearchClient
 from app.clients.openai_client import OpenAIClient
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple, Set
 import time
 import logging
 
@@ -117,16 +118,16 @@ class RecommendationService:
         scored_recipes = []
         
         for recipe in recipes:
-            # 1. 재료 매칭 점수 계산
-            ingredient_score = self._calculate_ingredient_score(
+            # 1. 재료 매칭 분석 (상세한 매칭 정보 포함)
+            ingredient_analysis = self._analyze_ingredient_matching(
                 recipe.get("ingredients", ""),
                 requested_ingredients
             )
             
             # 2. 기본 검색 점수와 재료 매칭 점수 결합
-            final_score = (recipe.get("score", 0) * 0.7) + (ingredient_score * 0.3)
+            final_score = (recipe.get("score", 0) * 0.7) + (ingredient_analysis["score"] * 0.3)
             
-            # 3. 실제 데이터 구조에 맞는 레시피 이름 찾기 (name 필드가 실제 필드명)
+            # 3. 실제 데이터 구조에 맞는 레시피 이름 찾기
             recipe_name = (
                 recipe.get("name") or             # 실제 데이터에서 사용하는 필드
                 recipe.get("rcp_nm") or 
@@ -164,15 +165,22 @@ class RecommendationService:
                 rcp_seq=str(recipe_id),
                 rcp_nm=recipe_name,
                 score=final_score,
-                match_reason=self._generate_match_reason(
-                    recipe,
-                    requested_ingredients,
-                    ingredient_score
+                match_reason=self._generate_improved_match_reason(
+                    recipe_name,
+                    ingredient_analysis
                 ),
+                missing_ingredients=ingredient_analysis["missing_ingredients"],
+                matched_ingredients=ingredient_analysis["matched_ingredients"],
                 ingredients=self._extract_recipe_ingredients(recipe),
                 rcp_way2=cooking_method,
                 rcp_category=category
             )
+            
+            # 디버깅을 위한 로깅 추가
+            logger.info(f"레시피: {recipe_name}")
+            logger.info(f"매칭된 재료: {ingredient_analysis['matched_ingredients']}")
+            logger.info(f"부족한 재료: {ingredient_analysis['missing_ingredients']}")
+            logger.info(f"매칭 이유: {scored_recipe.match_reason}")
             
             scored_recipes.append(scored_recipe)
         
@@ -183,59 +191,129 @@ class RecommendationService:
             reverse=True
         )
 
-    def _calculate_ingredient_score(
+    def _analyze_ingredient_matching(
         self,
         recipe_ingredients_text: str,
         requested_ingredients: List[str]
-    ) -> float:
+    ) -> Dict[str, Any]:
         """
-        재료 매칭 점수를 계산합니다.
-        """
-        if not recipe_ingredients_text:
-            return 0.0
+        재료 매칭을 상세히 분석합니다.
         
+        Returns:
+            Dict containing:
+            - score: 매칭 점수 (0.0 ~ 1.0)
+            - matched_ingredients: 매칭된 재료 목록
+            - missing_ingredients: 부족한 재료 목록
+            - total_recipe_ingredients: 레시피의 전체 재료 수
+            - match_count: 매칭된 재료 수
+        """
+        if not recipe_ingredients_text or not requested_ingredients:
+            return {
+                "score": 0.0,
+                "matched_ingredients": [],
+                "missing_ingredients": requested_ingredients.copy(),
+                "total_recipe_ingredients": 0,
+                "match_count": 0
+            }
+        
+        # 레시피 재료를 정리
         recipe_ingredients = [
             ing.strip().lower() 
             for ing in str(recipe_ingredients_text).split(",")
+            if ing.strip()
         ]
-        requested_lower = [ing.lower() for ing in requested_ingredients]
         
-        # 매칭되는 재료 수 계산
-        matches = 0
+        # 요청된 재료를 정리
+        requested_lower = [ing.strip().lower() for ing in requested_ingredients]
+        
+        # 매칭 분석
+        matched_ingredients = []
+        missing_ingredients = []
+        
         for requested in requested_lower:
+            matched = False
             for recipe_ing in recipe_ingredients:
-                if requested in recipe_ing or recipe_ing in requested:
-                    matches += 1
+                # 정확한 매칭 또는 부분 매칭 확인
+                if (requested in recipe_ing or 
+                    recipe_ing in requested or
+                    self._is_similar_ingredient(requested, recipe_ing)):
+                    matched_ingredients.append(requested)
+                    matched = True
                     break
+            
+            if not matched:
+                missing_ingredients.append(requested)
         
-        # 매칭 비율 계산
+        # 매칭 점수 계산
         if len(requested_ingredients) == 0:
-            return 0.0
+            score = 0.0
+        else:
+            score = len(matched_ingredients) / len(requested_ingredients)
         
-        return min(matches / len(requested_ingredients), 1.0)
+        return {
+            "score": score,
+            "matched_ingredients": matched_ingredients,
+            "missing_ingredients": missing_ingredients,
+            "total_recipe_ingredients": len(recipe_ingredients),
+            "match_count": len(matched_ingredients)
+        }
 
-    def _generate_match_reason(
+    def _is_similar_ingredient(self, ingredient1: str, ingredient2: str) -> bool:
+        """
+        두 재료가 유사한지 확인합니다.
+        """
+        # 동의어 매칭 로직 (확장 가능)
+        synonyms = {
+            "파프리카": ["피망", "빨간피망", "노란피망"],
+            "양배추": ["배추", "캐비지"],
+            "대파": ["파", "쪽파"],
+            "오렌지": ["오렌지주스", "오랜지"],
+            "당근": ["당근즙"]
+        }
+        
+        for main_ingredient, synonym_list in synonyms.items():
+            if ((ingredient1 == main_ingredient and ingredient2 in synonym_list) or
+                (ingredient2 == main_ingredient and ingredient1 in synonym_list) or
+                (ingredient1 in synonym_list and ingredient2 == main_ingredient) or
+                (ingredient2 in synonym_list and ingredient1 == main_ingredient)):
+                return True
+        
+        return False
+
+    def _generate_improved_match_reason(
         self,
-        recipe: Dict[str, Any],
-        requested_ingredients: List[str],
-        ingredient_score: float
+        recipe_name: str,
+        ingredient_analysis: Dict[str, Any]
     ) -> str:
         """
-        매칭 이유를 생성합니다.
+        개선된 매칭 이유를 생성합니다.
         """
-        recipe_name = (
-            recipe.get("name") or 
-            recipe.get("rcp_nm") or 
-            recipe.get("recipe_name") or 
-            "레시피"
-        )
+        matched_count = ingredient_analysis["match_count"]
+        missing_count = len(ingredient_analysis["missing_ingredients"])
+        total_requested = matched_count + missing_count
         
-        if ingredient_score > 0.8:
-            return f"{recipe_name}은(는) 요청하신 재료 대부분을 사용합니다 (매칭도: {ingredient_score:.1%})"
-        elif ingredient_score > 0.5:
-            return f"{recipe_name}은(는) 요청하신 재료 일부를 사용합니다 (매칭도: {ingredient_score:.1%})"
+        # 모든 재료가 있는 경우
+        if missing_count == 0 and matched_count > 0:
+            # 모든 재료가 매칭되었으므로 missing_ingredients를 None으로 설정
+            ingredient_analysis["missing_ingredients"] = None
+            return "모든 재료 OK"
+        
+        # 일부 재료가 부족한 경우
+        elif missing_count > 0:
+            if missing_count == 1:
+                missing_ingredient = ingredient_analysis["missing_ingredients"][0]
+                return f"{missing_ingredient} 만 더 있으면 완성!"
+            else:
+                # 부족한 재료가 여러 개인 경우
+                if missing_count <= 2:
+                    missing_str = ", ".join(ingredient_analysis["missing_ingredients"])
+                    return f"{missing_str} 만 더 있으면 완성!"
+                else:
+                    return f"{missing_count}개 재료 더 필요"
+        
+        # 매칭된 재료가 없는 경우
         else:
-            return f"{recipe_name}은(는) 유사한 재료를 사용하는 레시피입니다 (매칭도: {ingredient_score:.1%})"
+            return "유사한 재료로 만들 수 있는 레시피"
 
     def _extract_recipe_ingredients(
         self, 

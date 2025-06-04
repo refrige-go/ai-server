@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import recommendation, integration, search, spell_check
+from app.api import recommendation, integration, search, spell_check, backend_integration
 from app.config.settings import get_settings
 from app.clients.opensearch_client import opensearch_client
 import logging
@@ -30,6 +30,7 @@ app.add_middleware(
 )
 
 # 라우터 등록
+app.include_router(backend_integration.router, prefix="/api/backend", tags=["Backend Integration"])
 app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
 app.include_router(recommendation.router, prefix="/api/recommend", tags=["Recommendation"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
