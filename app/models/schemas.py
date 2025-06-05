@@ -31,6 +31,8 @@ class RecipeScore(BaseModel):
     rcp_nm: str
     score: float
     match_reason: str
+    missing_ingredients: Optional[List[str]] = None  # 부족한 재료 목록
+    matched_ingredients: Optional[List[str]] = None  # 매칭된 재료 목록
     ingredients: List[RecipeIngredient]
     rcp_way2: str
     rcp_category: str
