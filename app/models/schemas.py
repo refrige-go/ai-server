@@ -3,17 +3,17 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 # OCR 관련 스키마
-class OCRResponse(BaseModel):
-    ingredients: List['RecognizedIngredient']
-    confidence: float
-    processing_time: float
-
 class RecognizedIngredient(BaseModel):
     original_text: str
     ingredient_id: Optional[int] = None
     matched_name: str
     confidence: float
     alternatives: List[str] = []
+
+class OCRResponse(BaseModel):
+    ingredients: List[RecognizedIngredient]
+    confidence: float
+    processing_time: float
 
 # 레시피 추천 관련 스키마
 class RecommendationRequest(BaseModel):
