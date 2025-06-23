@@ -19,10 +19,13 @@ OCR 서비스 로직
 from fastapi import UploadFile
 from app.models.schemas import OCRResponse, RecognizedIngredient
 from app.clients.google_vision_client import GoogleVisionClient
-from app.utils.image_preprocessor import preprocess_image
-from app.utils.text_processor import clean_text
+from app.utils.ocr_image_preprocessor import preprocess_image
 from app.services.matching_service import match_ingredient
-from app.utils.text_processor import clean_text, extract_product_section, is_product_name
+from app.utils.ocr_text_processor import clean_text, extract_product_section, is_product_name
+from app.utils.ocr_head_noun_extractor import extract_head_noun
+from app.services.matching_service import match_ingredient
+from app.clients.opensearch_client import OpenSearchClient
+
 import time
 
 import re
@@ -65,9 +68,14 @@ async def analyze_receipt_image(image: UploadFile) -> OCRResponse:
         logger.info(f"처리 중인 상품: {product}")
         cleaned = clean_text(product)
         logger.info(f"정제된 텍스트: {cleaned}")
-        
+    
         if cleaned:
-            matched = await match_ingredient(cleaned)
+            # 핵심 명사 추출 추가
+            head_noun_result = extract_head_noun(cleaned)
+            core_ingredient = head_noun_result.head_noun
+            
+            # 핵심 명사로 매칭 시도
+            matched = await match_ingredient(core_ingredient)  # 핵심 명사로 매칭
             logger.info(f"매칭 결과: {matched}")
 
             if matched:
@@ -76,7 +84,10 @@ async def analyze_receipt_image(image: UploadFile) -> OCRResponse:
                     ingredient_id=matched.get("id"),
                     matched_name=matched.get("name"),
                     confidence=matched.get("confidence", 0.0),
-                    alternatives=matched.get("alternatives", [])
+                    alternatives=matched.get("alternatives", []),
+                    # 새로운 필드 추가
+                    extracted_head_noun=core_ingredient,
+                    extraction_confidence=head_noun_result.confidence
                 ))
     # 4. 결과 포맷팅
     avg_conf = sum(ing.confidence for ing in ingredients) / len(ingredients) if ingredients else 0.0
