@@ -15,6 +15,18 @@ def preprocess_image(image_bytes: bytes) -> bytes:
     img_cv = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
     img_gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.GaussianBlur(img_gray, (3, 3), 0)
-    _, img_binary = cv2.threshold(img_blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    _, buffer = cv2.imencode('.jpg', img_binary)
+    
+    # 적응형 이진화
+    img_adaptive = cv2.adaptiveThreshold(
+        img_blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+        cv2.THRESH_BINARY, 11, 2
+    )
+    # 노이즈 제거
+    img_denoised = cv2.fastNlMeansDenoising(img_adaptive, None, 30, 7, 21)
+    # 샤프닝
+    kernel = np.array([[0, -1, 0], [-1, 5,-1], [0, -1, 0]])
+    img_sharp = cv2.filter2D(img_denoised, -1, kernel)
+    # (필요시) 컬러 반전
+    # img_sharp = cv2.bitwise_not(img_sharp)
+    _, buffer = cv2.imencode('.jpg', img_sharp)
     return buffer.tobytes()

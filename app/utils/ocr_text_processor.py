@@ -50,35 +50,24 @@ def extract_product_section(full_text: str) -> list:
 
 def clean_text(text: str) -> str:
     text = text.strip()
-    
     # 1. 괄호 및 괄호 안 내용 제거
     text = re.sub(r'\([^)]*\)', '', text)
-
     # 2. 숫자+영어(단위) 제거 (예: 16.9도, 400g, 1L, 32462, B 등)
     text = re.sub(r'[0-9]+[a-zA-Z가-힣]*', '', text)
-
     # 3. 영어만 남은 경우 제거
     text = re.sub(r'[a-zA-Z]', '', text)
-
-    # 1. 숫자 + 단위 패턴 제거 (예: 300G, 1L, 500ml, 3,900)
-    text = re.sub(r'\d+[A-Za-z]*', '', text)  # 숫자+단위 제거
-    text = re.sub(r'\d+', '', text)  # 남은 숫자들 제거
-    
-    # 2. 특수문자 제거 (한글/영문만 남기기)
-    text = re.sub(r'[^가-힣a-zA-Z]', '', text)
-    
-    if not text or len(text) < 2:
+    # 4. 특수문자 제거 (한글만 남기기)
+    text = re.sub(r'[^가-힣]', '', text)
+    # 5. 1글자 미만이면 제거
+    if not text or len(text) < 1:
         return ''
-    
-    # 3. 불필요한 단어가 포함되어 있으면 제거
+    # 6. 불필요한 단어가 포함되어 있으면 제거
     if any(word in text for word in REMOVE_WORDS):
         return ''
-    
-    # 4. 핵심 명사 추출 적용 (복합명사구인 경우)
-    if len(text.split()) > 1:  # 공백으로 구분된 복합명사구
+    # 7. 복합명사구면 핵심명사 추출
+    if len(text.split()) > 1:
         head_noun_result = extract_head_noun(text)
         return head_noun_result.head_noun
-    
     return text
 
 def clean_ocr_results(ocr_results: list) -> list:
@@ -105,5 +94,5 @@ def clean_ocr_results(ocr_results: list) -> list:
 
 # 상품명 패턴 필터 함수
 def is_product_name(text):
-    # 한글로 시작하고, 한글/영문/숫자 조합, 길이 3~20자
-    return bool(re.match(r'^[가-힣][가-힣a-zA-Z0-9]{2,20}$', text))
+    # 한글로 시작하고, 한글/영문/숫자 조합, 길이 1~20자
+    return bool(re.match(r'^[가-힣][가-힣a-zA-Z0-9]{0,19}$', text))
