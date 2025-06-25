@@ -75,7 +75,7 @@ async def analyze_receipt_image(image: UploadFile) -> OCRResponse:
             core_ingredient = head_noun_result.head_noun
             
             # 핵심 명사로 매칭 시도
-            matched = await match_ingredient(core_ingredient)  # 핵심 명사로 매칭
+            matched = await match_ingredient(core_ingredient)  # 핵심 명사로 매칭, matching_service 호출
             logger.info(f"매칭 결과: {matched}")
 
             if matched:

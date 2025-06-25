@@ -9,6 +9,8 @@ class RecognizedIngredient(BaseModel):
     matched_name: str
     confidence: float
     alternatives: List[str] = []
+    extracted_head_noun: Optional[str] = None  # 추출된 핵심 명사
+    extraction_confidence: Optional[float] = None  # 추출 신뢰도
 
 class OCRResponse(BaseModel):
     ingredients: List[RecognizedIngredient]

@@ -45,7 +45,7 @@ async def search_ingredient_in_opensearch(query: str) -> dict:
     if hits:
         source = hits[0]["_source"]
         return {
-            "id": source.get("id"),
+            "id": source.get("ingredient_id"),
             "name": source.get("name"),
             "confidence": hits[0]["_score"] / 10,  # 점수 정규화는 필요에 따라 조정
             "alternatives": []
@@ -55,10 +55,24 @@ async def search_ingredient_in_opensearch(query: str) -> dict:
 async def match_ingredient(text: str) -> dict:
     logger.debug(f"매칭 시도: {text}")
 
-    # 1차: 동의어 사전 매칭
+     # 1차: 동의어 사전 매칭
     synonym_result = match_with_synonym_dict(text)
     if synonym_result:
         logger.debug(f"동의어 사전 매칭 성공: {synonym_result}")
+        
+        # 동의어 매칭 후 표준명으로 OpenSearch 검색하여 ingredient_id 찾기
+        standard_name = synonym_result["name"]
+        os_result = await search_ingredient_in_opensearch(standard_name)
+        if os_result:
+            logger.debug(f"표준명으로 ingredient_id 찾기 성공: {os_result}")
+            return {
+                "id": os_result["id"],
+                "name": synonym_result["name"],
+                "confidence": synonym_result["confidence"],
+                "alternatives": synonym_result["alternatives"]
+            }
+        
+        # OpenSearch에서 찾지 못하면 동의어 결과 그대로 반환
         return synonym_result
 
     # 2차: 오픈서치 매칭
@@ -72,6 +86,6 @@ async def match_ingredient(text: str) -> dict:
     return {
         "id": None,
         "name": text,
-        "confidence": 0.8,
+        "confidence": 0.3,
         "alternatives": []
     }
