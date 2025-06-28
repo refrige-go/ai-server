@@ -1,12 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import recommendation, integration, search, spell_check, backend_integration
+from app.api import recommendation, integration, search, spell_check
 from app.config.settings import get_settings
 from app.clients.opensearch_client import opensearch_client
+from app.api import ocr
 import logging
 
 # 로깅 설정
-logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # 설정 로드
@@ -30,11 +32,11 @@ app.add_middleware(
 )
 
 # 라우터 등록
-app.include_router(backend_integration.router, prefix="/api/backend", tags=["Backend Integration"])
 app.include_router(integration.router, prefix="/api/integration", tags=["Integration"])
 app.include_router(recommendation.router, prefix="/api/recommend", tags=["Recommendation"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(spell_check.router, prefix="/api/spell", tags=["Spell Check"])
+app.include_router(ocr.router, prefix="/api/v1/ocr", tags=["OCR"])
 
 @app.get("/")
 async def root():
