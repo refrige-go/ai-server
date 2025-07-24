@@ -11,6 +11,8 @@ class RecognizedIngredient(BaseModel):
     alternatives: List[str] = []
     extracted_head_noun: Optional[str] = None  # 추출된 핵심 명사
     extraction_confidence: Optional[float] = None  # 추출 신뢰도
+    ai_inferred: bool = False  # AI로 추론된 결과인지 여부
+    original_ocr_text: Optional[str] = None  # 원본 OCR 텍스트 (AI 추론 시에만 사용)
 
 class OCRResponse(BaseModel):
     ingredients: List[RecognizedIngredient]
