@@ -21,7 +21,7 @@ class OpenSearchClient:
         opensearch_port = getattr(self.settings, 'opensearch_port', 9200)
         
         # 환경별 인증 설정
-        if opensearch_host in ['localhost', '127.0.0.1']:
+        if opensearch_host in ['localhost', '127.0.0.1', 'host.docker.internal']:
             # 로컬 환경 (recipe-ai-project OpenSearch)
             auth = None
             use_ssl = False

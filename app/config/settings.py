@@ -18,9 +18,13 @@ class Settings(BaseSettings):
     # OpenAI 설정
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     
-    # Google Cloud Vision 설정
-    google_application_credentials: str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
-    google_cloud_project: str = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+    # # Google Cloud Vision 설정
+    # google_application_credentials: str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+    # google_cloud_project: str = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+
+    # 🔧 OCR API Gateway 설정 (신규 추가)
+    ocr_api_key: str = os.getenv("OCR_API_KEY", "")
+    ocr_apigw_url: str = os.getenv("OCR_APIGW_URL", "")
     
     # 날씨 API 설정
     weather_api_key: str = os.getenv("WEATHER_API_KEY", "")
